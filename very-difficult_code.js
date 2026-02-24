@@ -1,27 +1,42 @@
 const sharp = require('sharp');
 const fs = require('fs');
 const images = [
-    'photo1.jpg',
-    'photo2.jpg',
-    'photo3.jpg',
-    'photo4.jpg',
+    'input1.jpg',
+    'input2.jpg',
+    'input3.jpg',
+    'input4.jpg',
 ];
 const degrees = [90, 180, 270, 360];
 const formats = ['jpeg', 'png', 'webp', 'avif'];
 async function start() {
-  for (let i = 0; i < images.length; i++) {
-    const name = "result-image" + i;
-    for (let j = 0; j < degrees.length; j++) {
-      for (let k = 0; k < formats.length; k++) {
-        const newName = name + '_' + degrees[j] + '.' + formats[k];        
-        await sharp(images[i])
-          .rotate(degrees[j])
-          .toFormat(formats[k])
-          .toFile(newName);
-        console.log('Фото збережене:', newName);
-      }
+
+    const tasks = images.flatMap((img, i) => 
+    degrees.flatMap(deg => 
+      formats.map(fmt => ({
+        source: img,
+        degree: deg,
+        format: fmt,
+        outputName: `result-image${i}_${deg}.${fmt}`
+      }))
+    )
+  );
+
+  for await (const task of tasks) {
+if (!fs.existsSync(task.source)) {
+console.error(`Error: File "${task.source}" not found.`);
+continue;
+}
+try{
+      await sharp(task.source)
+        .rotate(task.degree)
+        .toFormat(task.format)
+        .toFile(task.outputName);
+        
+      console.log('Photo saved:', task.outputName);
+    } catch (err) {
+      console.error(`Error processing ${task.outputName}:`, err);
     }
   }
 }
 
-start()
+start();
